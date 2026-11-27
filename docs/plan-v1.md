@@ -16,20 +16,20 @@ Vocabulary: [`GLOSSARY.md`](../GLOSSARY.md). Architecture: [ADR 0001](./adr/0001
   - A Shared row of 3 options. Each slot is independently either a Card or an Upgrade.
   - The winner picks 1, then the loser picks 1 of the remaining 2, and the leftover option is discarded. After a drawn Match, a random side picks first.
   - **Upgrade**: the picking side chooses any Card it owns, in its Deck or Spent pile, to get +1 Damage.
-  - A new Card goes into the Deck. *This is a default I've chosen; check it in playtesting.*
+  - A new Card goes into the Deck. _This is a default I've chosen; check it in playtesting._
 
 ### Config (with defaults)
 
-| key | default |
-|---|---|
-| `startingHp` | 10 |
-| `draftSize` | 5 |
-| `rowSize` | 3 |
-| `handSize` | 3 |
-| `roundsToWinMatch` | 2 |
-| `roundCap` | 5 |
+| key                   | default      |
+| --------------------- | ------------ |
+| `startingHp`          | 10           |
+| `draftSize`           | 5            |
+| `rowSize`             | 3            |
+| `handSize`            | 3            |
+| `roundsToWinMatch`    | 2            |
+| `roundCap`            | 5            |
 | `rewardUpgradeChance` | 1/3 per slot |
-| `baseDamage` | 1 |
+| `baseDamage`          | 1            |
 
 ## Engine API (`src/engine`)
 
@@ -62,6 +62,7 @@ eventsFor(events, side): GameEvent[]              // ADR 0001
 `GameState` holds the RNG state, so a seed plus a list of actions replays a Run exactly.
 
 **Events**, each tagged with an audience (`public` or `{ side }`):
+
 - `DraftRowDealt`, `DraftPicked`
 - `MatchStarted`
 - `CardDrawn`: private. The public version is `CardsDrawn { side, count }`.
@@ -73,6 +74,7 @@ eventsFor(events, side): GameEvent[]              // ADR 0001
 - `RunEnded`
 
 **Views**:
+
 - `PublicView` holds both sides' HP, Deck size, Spent pile (in order) and Hand size, plus Match and Round numbers, Round wins, the current row, phase, and whether each side has committed.
 - `PrivateView` is a `PublicView` plus that side's own Hand and committed Card.
 

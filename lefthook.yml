@@ -1,0 +1,20 @@
+# Pre-commit runs fast checks that a deliberately red TDD commit still passes.
+# Tests run in CI only (.github/workflows/ci.yml).
+pre-commit:
+  piped: true # format before linting the same files
+  commands:
+    format:
+      priority: 1
+      # No glob: --ignore-unknown skips files Prettier can't format, so the hook
+      # covers the same files as CI's `prettier --check .`.
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    lint:
+      priority: 2
+      glob: "*.{ts,tsx,js,mjs,cjs}"
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+    typecheck:
+      # Checks the working tree, not the staged snapshot: a commit that omits a
+      # file it imports can pass here. CI is the gate for that.
+      priority: 3
+      run: pnpm exec tsc -b
