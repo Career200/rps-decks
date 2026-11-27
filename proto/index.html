@@ -1,0 +1,428 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RPS Deck — throwaway proto</title>
+<style>
+  :root { --R:#d9534f; --P:#3f8fd8; --S:#e0a526; }
+  body { font-family: system-ui, sans-serif; background:#1d3b2a; color:#eee; margin: 0; padding: 10px 16px; }
+  button { font-family: inherit; background:#2a2a2a; color:#eee; border:1px solid #666; border-radius:6px; padding:6px 10px; margin:2px 4px; cursor:pointer; }
+  button:hover { border-color:#ddd; }
+  .dim { color:#9bb; }
+  h2, h3 { margin: 0; }
+  .top { padding: 4px 0 10px; font-size: 14px; }
+  .layout { display:grid; grid-template-columns: 1fr 300px; gap: 14px; align-items: start; }
+  .logbox { background:#0008; border-radius:8px; padding:8px; position: sticky; top: 10px; }
+  #log { height: calc(100vh - 90px); overflow-y: auto; white-space: pre-wrap; font: 12px ui-monospace, monospace; color:#ccc; }
+
+  /* zones */
+  .zone { background:#0003; border-radius:10px; padding:8px 12px; margin-bottom:10px; }
+  .zone.you { border:1px solid #6c6; } .zone.foe { border:1px solid #c66; }
+  .zhead { display:flex; align-items:center; gap:14px; margin-bottom:6px; flex-wrap: wrap; }
+  .zrow { display:flex; gap:18px; align-items:flex-start; }
+  .zcell { display:flex; flex-direction:column; align-items:center; }
+  .handzone { min-width: 300px; }
+  .zlabel, .tlabel { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#9bb; margin:4px 0; }
+  .track { align-items:stretch; background:#0003; border-radius:8px; padding:4px 8px; min-width: 260px; }
+
+  /* cards */
+  .card { position:relative; width:96px; height:132px; border-radius:9px; background:#fbf8f0; color:#222; border:3px solid #999;
+          box-shadow: 0 3px 6px #0007; padding:5px; box-sizing:border-box; text-align:center; flex: none; }
+  .card.R { border-color:var(--R); } .card.P { border-color:var(--P); } .card.S { border-color:var(--S); }
+  .card .glyph { font-size:34px; line-height:44px; }
+  .card .cname { font-weight:700; font-size:12px; }
+  .card .cdesc { font-size:10px; color:#555; margin-top:3px; line-height:1.2; }
+  .card .key { position:absolute; top:3px; left:6px; font-size:11px; color:#888; }
+  .card.play { cursor:pointer; transition: transform .1s; }
+  .card.play:hover { transform: translateY(-8px); box-shadow: 0 8px 14px #000a; }
+  .card.back { background: repeating-linear-gradient(45deg, #5a2a6a 0 6px, #6c3a7c 6px 12px); border-color:#ddd; }
+  .card.sm { width:56px; height:78px; position:absolute; }
+  .card.empty { background:none; border:2px dashed #6a8; box-shadow:none; }
+  .hand { display:flex; gap:8px; flex-wrap: wrap; justify-content:center; min-height:132px; align-items:center; }
+  .pile { position:relative; width:70px; height:86px; }
+  .pile .count { position:absolute; left:18px; top:22px; z-index:5; background:#000c; color:#fff; border-radius:12px; padding:2px 8px; font-weight:700; }
+
+  /* counting columns */
+  .cols { display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; }
+  .col { display:flex; flex-direction:column; gap:2px; }
+  .colhead { font-size:15px; text-align:center; border-bottom:2px solid; padding-bottom:2px; margin-bottom:2px; }
+  .colhead.R { border-color:var(--R); } .colhead.P { border-color:var(--P); } .colhead.S { border-color:var(--S); }
+  .mini { font-size:11px; background:#fbf8f0; color:#222; border-left:5px solid; border-radius:3px; padding:1px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 100px; }
+  .mini.R { border-color:var(--R); } .mini.P { border-color:var(--P); } .mini.S { border-color:var(--S); }
+  .mini.ghost { background:#fbf8f022; color:#eee; outline:1px dashed #fff5; }
+
+  .hp { display:flex; align-items:center; gap:2px; }
+  .pip { width:12px; height:14px; border-radius:3px; background:#333; } .pip.on { background:#e44; }
+  .zone.you .pip.on { background:#4c4; }
+  .badge { background:#fd4; color:#222; border-radius:10px; padding:2px 8px; font-size:12px; font-weight:600; }
+  .badge.dimb { background:#888; }
+
+  /* battlefield */
+  .field { display:flex; gap:24px; align-items:center; background:#0002; border-radius:10px; padding:10px 12px; margin-bottom:10px; }
+  .clash { display:flex; align-items:center; gap:10px; }
+  .clash .lbl { font-size:11px; color:#9bb; writing-mode: vertical-rl; transform: rotate(180deg); }
+  .result { font-weight:800; padding:6px 10px; border-radius:6px; min-width: 110px; text-align:center; }
+  .result.win { background:#2a2; } .result.lose { background:#b33; } .result.tie { background:#666; }
+  .histwrap { flex:1; }
+  .strip { display:flex; gap:3px; flex-wrap:wrap; }
+  .hist { display:flex; flex-direction:column; font-size:16px; background:#0004; border-radius:4px; padding:1px 3px; border-bottom:3px solid #666; }
+  .hist.win { border-color:#4c4; } .hist.lose { border-color:#e44; }
+  .panel { background:#0004; border-radius:10px; padding:14px; margin-bottom:10px; }
+  .panel .hand { justify-content:flex-start; margin:10px 0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ---------- RNG ----------
+let rngState = 1;
+function rand() { // mulberry32
+  rngState |= 0; rngState = rngState + 0x6D2B79F5 | 0;
+  let t = Math.imul(rngState ^ rngState >>> 15, 1 | rngState);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function pick(a) { return a[Math.floor(rand() * a.length)]; }
+
+// ---------- Cards ----------
+// triggers: reveal / win / loss / tie -> list of effects
+// effects: ['dmg',n] ['armor',n] ['heal',n] ['draw',n] ['discard',n] ['peek'] ['next',n]
+// flags: winTies, exile
+const CARDS = {
+  rock:     { name:'Rock', t:'R' },
+  paper:    { name:'Paper', t:'P' },
+  scissors: { name:'Scissors', t:'S' },
+
+  boulder:   { name:'Boulder', t:'R', win:[['dmg',2]] },
+  glassrock: { name:'Glass Rock', t:'R', win:[['dmg',3]], exile:true },
+  momentum:  { name:'Momentum', t:'R', win:[['next',1]] },
+  pebbles:   { name:'Pebble Storm', t:'R', win:[['discard',1]] },
+  feint:     { name:'Feint', t:'R', tie:[['heal',1],['draw',1]] },
+
+  origami:   { name:'Origami Shield', t:'P', loss:[['armor',2]] },
+  recycled:  { name:'Recycled Paper', t:'P', loss:[['draw',1]] },
+  scout:     { name:'Scout', t:'P', reveal:[['peek']] },
+  papercut:  { name:'Paper Cut', t:'P', winTies:true },
+  heavy:     { name:'Heavy Paper', t:'P', win:[['dmg',1]] },
+
+  shears:    { name:'Shears', t:'S', winTies:true },
+  bandage:   { name:'Bandage', t:'S', tie:[['heal',2]] },
+  twin:      { name:'Twin Blades', t:'S', win:[['dmg',1],['draw',1]] },
+  rusty:     { name:'Rusty Scissors', t:'S', loss:[['discard',1]] },
+  whetstone: { name:'Whetstone', t:'S', reveal:[['next',1]] },
+};
+const STARTER = ['rock','rock','paper','paper','scissors'];
+const POOL = Object.keys(CARDS).filter(k => !['rock','paper','scissors'].includes(k));
+
+const BEATS = { R:'S', S:'P', P:'R' };
+const COUNTER = { R:'P', P:'S', S:'R' };
+
+function describe(id) {
+  const c = CARDS[id]; const parts = [];
+  const fx = e => ({dmg:`+${e[1]} dmg`, armor:`armor ${e[1]}`, heal:`heal ${e[1]}`, draw:`draw ${e[1]}`,
+    discard:`opp discards ${e[1]}`, peek:`peek opp hand next round`, next:`next card +${e[1]} dmg`}[e[0]]);
+  for (const k of ['reveal','win','loss','tie']) if (c[k]) parts.push(`${k}: ${c[k].map(fx).join(', ')}`);
+  if (c.winTies) parts.push('wins ties');
+  if (c.exile) parts.push('exile after play');
+  return parts.join('; ') || 'plain';
+}
+
+// ---------- State ----------
+let uidCounter = 0;
+const HAND = 3;
+const REFILL_AT = 1; // hand is topped back up to HAND only when it has this many cards or fewer
+let G; // run state
+
+function mkSide(name, deckIds, hp) {
+  return { name, hp, maxHp: hp, deck: shuffle(deckIds.map(id => ({ id, uid: ++uidCounter }))), hand: [], discard: [],
+           exiled: [], next: 0, peek: false, pending: { draw:0, discard:0 }, history: [] };
+}
+function draw(side, n) {
+  for (let i = 0; i < n; i++) {
+    if (!side.deck.length) {
+      if (!side.discard.length) return;
+      side.deck = shuffle(side.discard); side.discard = [];
+      log(`  ${side.name} reshuffles discard into deck.`);
+    }
+    side.hand.push(side.deck.pop());
+  }
+}
+function log(s) { G.log.push(s); }
+
+const ENEMIES = [
+  { name:'Pebble Kid',   hp:8,  deck:['rock','rock','rock','paper','scissors'] },
+  { name:'Paper Pusher', hp:10, deck:['paper','heavy','origami','rock','scissors'] },
+  { name:'The Shredder', hp:12, deck:['shears','twin','scissors','boulder','bandage'] },
+];
+
+function newRun(seed) {
+  rngState = seed;
+  G = { seed, fight: 0, deck: STARTER.slice(), phase: 'match', log: [], rewards: [] };
+  startFight();
+}
+function startFight() {
+  const e = ENEMIES[G.fight];
+  G.log = [`=== Fight ${G.fight+1}/3 vs ${e.name} ===`];
+  G.p = mkSide('You', G.deck, 10);
+  G.e = mkSide(e.name, e.deck, e.hp);
+  draw(G.p, HAND); draw(G.e, HAND);
+  G.phase = 'match';
+  G.round = 1;
+  G.rounds = [];
+}
+
+// ---------- AI ----------
+function aiChoose() {
+  const e = G.e, p = G.p;
+  // P(player type)
+  let probs;
+  if (e.peek) {
+    const cnt = { R:0, P:0, S:0 }; p.hand.forEach(c => cnt[CARDS[c.id].t]++);
+    probs = { R: cnt.R/p.hand.length, P: cnt.P/p.hand.length, S: cnt.S/p.hand.length };
+  } else {
+    const recent = p.history.slice(-6);
+    const cnt = { R:1, P:1, S:1 }; recent.forEach(t => cnt[t]++);
+    const tot = cnt.R + cnt.P + cnt.S;
+    probs = { R: cnt.R/tot, P: cnt.P/tot, S: cnt.S/tot };
+  }
+  const scores = e.hand.map(c => {
+    const d = CARDS[c.id]; let s = 0;
+    for (const t of ['R','P','S']) {
+      let v = 0;
+      const winDmg = 1 + e.next + (d.win||[]).filter(x=>x[0]==='dmg').reduce((a,x)=>a+x[1],0);
+      if (BEATS[d.t] === t) v = winDmg + 0.3 * (d.win||[]).length;
+      else if (BEATS[t] === d.t) v = -1 + 0.4 * (d.loss||[]).length;
+      else v = (d.winTies ? winDmg : 0) + 0.4 * (d.tie||[]).length;
+      s += probs[t] * v;
+    }
+    if (d.exile) s -= 0.3;
+    return s;
+  });
+  const T = 0.35;
+  const w = scores.map(s => Math.exp(s / T)); const tot = w.reduce((a,b)=>a+b,0);
+  let r = rand() * tot;
+  for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; }
+  return w.length - 1;
+}
+
+// ---------- Round resolution ----------
+function play(handIdx) {
+  const p = G.p, e = G.e;
+  const pc = p.hand.splice(handIdx, 1)[0];
+  const ec = e.hand.splice(aiChoose(), 1)[0];
+  const pd = CARDS[pc.id], ed = CARDS[ec.id];
+  p.history.push(pd.t); e.history.push(ed.t);
+  p.peek = false; e.peek = false;
+
+  log(`\n-- Round ${G.round++} --`);
+  log(`You play ${pd.name} [${pd.t}]  vs  ${e.name} plays ${ed.name} [${ed.t}]`);
+
+  const ctx = { [0]: { side:p, opp:e, card:pd, dmg:0, armor:0 }, [1]: { side:e, opp:p, card:ed, dmg:0, armor:0 } };
+  // carry-over next-card bonus is consumed by this play
+  ctx[0].dmg += p.next; ctx[1].dmg += e.next;
+  if (p.next) log(`  You have +${p.next} momentum on this card.`);
+  if (e.next) log(`  ${e.name} has +${e.next} momentum on this card.`);
+  p.next = 0; e.next = 0;
+
+  const run = (c, effects) => {
+    for (const [k, n] of (effects || [])) {
+      const who = c.side.name;
+      if (k === 'dmg') { c.dmg += n; log(`  ${who}: +${n} dmg`); }
+      if (k === 'armor') { c.armor += n; log(`  ${who}: armor ${n}`); }
+      if (k === 'heal') { const h = Math.min(n, c.side.maxHp - c.side.hp); c.side.hp += h; log(`  ${who}: heals ${h}`); }
+      if (k === 'draw') { c.side.pending.draw += n; log(`  ${who}: will draw ${n} extra`); }
+      if (k === 'discard') { c.opp.pending.discard += n; log(`  ${who}: ${c.opp.name} will discard ${n} next hand`); }
+      if (k === 'peek') { c.side.peekNext = true; log(`  ${who}: will see opponent's next hand`); }
+      if (k === 'next') { c.side.next += n; log(`  ${who}: next card +${n} dmg`); }
+    }
+  };
+
+  // 1. reveal
+  run(ctx[0], pd.reveal); run(ctx[1], ed.reveal);
+
+  // 2. outcome
+  let winner = null, dealt = 0;
+  if (BEATS[pd.t] === ed.t) winner = 0;
+  else if (BEATS[ed.t] === pd.t) winner = 1;
+  else {
+    if (pd.winTies && !ed.winTies) { winner = 0; log(`  ${pd.name} wins the tie!`); }
+    else if (ed.winTies && !pd.winTies) { winner = 1; log(`  ${ed.name} wins the tie!`); }
+  }
+
+  // 3. triggers
+  if (winner === null) {
+    log('  Tie.');
+    run(ctx[0], pd.tie); run(ctx[1], ed.tie);
+    // momentum not spent on a tie? keep it simple: it is spent.
+  } else {
+    const W = ctx[winner], L = ctx[1 - winner];
+    run(W, W.card.win); run(L, L.card.loss);
+    // 4. damage
+    const dmg = Math.max(0, 1 + W.dmg - L.armor);
+    L.side.hp -= dmg; dealt = dmg;
+    log(`  ${W.side.name} wins: ${dmg} damage to ${L.side.name}${L.armor ? ` (armor ${L.armor} absorbed)` : ''}.`);
+  }
+
+  G.rounds.push({ p: pc.id, e: ec.id, winner, dmg: dealt });
+
+  // 5. discard / exile
+  (pd.exile ? p.exiled : p.discard).push(pc);
+  (ed.exile ? e.exiled : e.discard).push(ec);
+  if (pd.exile) log(`  ${pd.name} is exiled.`);
+  if (ed.exile) log(`  ${ed.name} is exiled.`);
+
+  // 6. refill to HAND only once down to REFILL_AT cards, then extra draws, then forced discards
+  for (const s of [p, e]) {
+    if (s.hand.length <= REFILL_AT) {
+      draw(s, Math.max(0, HAND - s.hand.length));
+      log(`  ${s.name} refills hand.`);
+    }
+    if (s.pending.draw) draw(s, s.pending.draw);
+    for (let i = 0; i < s.pending.discard && s.hand.length; i++) {
+      const idx = Math.floor(rand() * s.hand.length);
+      const c = s.hand.splice(idx, 1)[0]; s.discard.push(c);
+      log(`  ${s.name} discards ${CARDS[c.id].name}.`);
+    }
+    if (!s.hand.length) draw(s, HAND); // never start a round with nothing to play
+    s.pending = { draw:0, discard:0 };
+    if (s.peekNext) { s.peek = true; s.peekNext = false; }
+  }
+
+  // 7. KO
+  if (p.hp <= 0) { G.phase = 'lost'; log(`\nYou are knocked out.`); }
+  else if (e.hp <= 0) {
+    log(`\n${e.name} is defeated!`);
+    if (G.fight === 2) G.phase = 'won';
+    else { G.phase = 'reward'; G.rewards = shuffle(POOL.slice()).slice(0, 3); }
+  }
+  render();
+}
+
+// deck stays at 5: a reward replaces one of your cards
+function takeReward(id) {
+  if (id) { G.pendingReward = id; G.phase = 'replace'; render(); return; }
+  nextFight();
+}
+function replaceCard(i) {
+  G.deck[i] = G.pendingReward;
+  nextFight();
+}
+function nextFight() {
+  G.fight++;
+  startFight();
+  render();
+}
+
+// ---------- UI ----------
+const GLYPH = { R:'✊', P:'✋', S:'✌️' };
+const TYPES = ['R','P','S'];
+const isPlain = id => ['rock','paper','scissors'].includes(id);
+
+function bigCard(id, onclick, key) {
+  const c = CARDS[id];
+  return `<div class="card ${c.t} ${onclick ? 'play' : ''}" ${onclick ? `onclick="${onclick}"` : ''}>
+    ${key ? `<span class="key">${key}</span>` : ''}
+    <div class="glyph">${GLYPH[c.t]}</div><div class="cname">${c.name}</div>
+    <div class="cdesc">${isPlain(id) ? '' : describe(id)}</div></div>`;
+}
+const backCard = () => `<div class="card back"></div>`;
+const mini = (id, cls='') => `<div class="mini ${CARDS[id].t} ${cls}" title="${CARDS[id].name}: ${describe(id)}">${GLYPH[CARDS[id].t]} ${CARDS[id].name}</div>`;
+
+function pile(n, label) {
+  const layers = Math.min(n, 6);
+  let h = `<div class="pile">`;
+  for (let i = 0; i < layers; i++) h += `<div class="card back sm" style="top:${-i*3}px;left:${i*2}px"></div>`;
+  if (!n) h += `<div class="card empty sm"></div>`;
+  return h + `<div class="count">${n}</div></div><div class="zlabel">${label}</div>`;
+}
+
+// cards grouped into R/P/S columns, plain cards first
+function columns(cards, cls) {
+  const ids = cards.map(c => c.id ?? c);
+  return `<div class="cols">${TYPES.map(t => {
+    const of = ids.filter(id => CARDS[id].t === t).sort((a,b) => isPlain(b) - isPlain(a));
+    return `<div class="col"><div class="colhead ${t}">${GLYPH[t]} <b>${of.length}</b></div>${of.map(id => mini(id, cls)).join('')}</div>`;
+  }).join('')}</div>`;
+}
+
+function hpBar(s) {
+  let h = '';
+  for (let i = 0; i < s.maxHp; i++) h += `<span class="pip ${i < s.hp ? 'on' : ''}"></span>`;
+  return `<div class="hp">${h} <b>${Math.max(0, s.hp)}</b>/${s.maxHp}</div>`;
+}
+function badges(s) {
+  return (s.next ? `<span class="badge">next card +${s.next}</span>` : '') +
+         (s.peek ? `<span class="badge">peeking</span>` : '') +
+         (s.exiled.length ? `<span class="badge dimb">exiled: ${s.exiled.map(c => CARDS[c.id].name).join(', ')}</span>` : '');
+}
+
+function sideZone(s, me) {
+  const hand = me
+    ? s.hand.map((c, i) => bigCard(c.id, G.phase === 'match' ? `play(${i})` : null, i + 1)).join('')
+    : (G.p.peek ? s.hand.map(c => bigCard(c.id)).join('') : s.hand.map(backCard).join(''));
+  // counting panel: enemy decklist is public, so deck+hand = decklist - discard - exile
+  // enemy: static full decklist (counting is left to the player); you: live draw pile
+  const unseen = me ? s.deck : ENEMIES[G.fight].deck;
+  const unseenLabel = me ? `Your draw pile — ${s.deck.length}` : `Full decklist — ${unseen.length}`;
+  return `<div class="zone ${me ? 'you' : 'foe'}">
+    <div class="zhead"><h3>${s.name}</h3>${hpBar(s)}${badges(s)}</div>
+    <div class="zrow">
+      <div class="zcell">${pile(s.deck.length, 'deck')}</div>
+      <div class="zcell handzone"><div class="hand">${hand || '<span class="dim">no cards</span>'}</div>
+        <div class="zlabel">${me ? 'your hand — click or press 1-' + s.hand.length : (G.p.peek ? 'enemy hand (peeked!)' : `enemy hand — ${s.hand.length} hidden`)}</div></div>
+      <div class="zcell track"><div class="tlabel">${unseenLabel}</div>${columns(unseen, me ? 'ghost' : '')}</div>
+      <div class="zcell track"><div class="tlabel">Discard — ${s.discard.length}</div>${columns(s.discard, '')}</div>
+    </div></div>`;
+}
+
+function battlefield() {
+  const r = G.rounds, last = r[r.length - 1];
+  let mid;
+  if (!last) mid = `<div class="dim" style="padding:40px">No cards played yet.</div>`;
+  else {
+    const res = last.winner === null ? 'TIE' : last.winner === 0 ? `YOU WIN · ${last.dmg} dmg` : `YOU LOSE · ${last.dmg} dmg`;
+    const cls = last.winner === null ? 'tie' : last.winner === 0 ? 'win' : 'lose';
+    mid = `<div class="clash"><div class="lbl">enemy played</div>${bigCard(last.e)}
+      <div class="result ${cls}">${res}</div>${bigCard(last.p)}<div class="lbl">you played</div></div>`;
+  }
+  const strip = r.map((x, i) => `<div class="hist ${x.winner === null ? 'tie' : x.winner === 0 ? 'win' : 'lose'}" title="R${i+1}: ${CARDS[x.e].name} vs ${CARDS[x.p].name}">
+      <div>${GLYPH[CARDS[x.e].t]}</div><div>${GLYPH[CARDS[x.p].t]}</div></div>`).join('');
+  return `<div class="field">${mid}
+    <div class="histwrap"><div class="tlabel">round history (top: enemy · bottom: you · border = result)</div><div class="strip">${strip || '<span class="dim">—</span>'}</div></div></div>`;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  let main = '';
+  if (G.phase === 'replace') {
+    main = `<div class="panel"><h2>Adding ${CARDS[G.pendingReward].name} — pick a card from your deck to replace</h2>
+      <div class="hand">${bigCard(G.pendingReward)}<div style="font-size:30px;padding:0 10px">→</div>
+        ${G.deck.map((id, i) => bigCard(id, `replaceCard(${i})`)).join('')}</div>
+      <button onclick="G.phase='reward';render()">Back</button></div>`;
+  } else if (G.phase === 'reward') {
+    main = `<div class="panel"><h2>Victory! Pick a card to add to your deck</h2>
+      <div class="hand">${G.rewards.map(id => bigCard(id, `takeReward('${id}')`)).join('')}</div>
+      <button onclick="takeReward(null)">Skip</button>
+      <div class="tlabel" style="margin-top:16px">Your deck — ${G.deck.length}</div>${columns(G.deck, '')}</div>`;
+  } else {
+    main = sideZone(G.e, false) + battlefield() + sideZone(G.p, true);
+    if (G.phase !== 'match') main += `<div class="panel"><h2>${G.phase === 'won' ? 'RUN WON!' : 'RUN LOST'}</h2><button onclick="restart()">New run</button></div>`;
+  }
+  const e = ENEMIES[G.fight];
+  app.innerHTML = `<div class="top">Fight ${G.fight + 1}/3 vs <b>${e.name}</b> · seed ${G.seed}
+      <button onclick="restart()">New run</button><button onclick="restart(${G.seed})">Restart seed</button>
+      <span class="dim">· enemy decklist (public): ${e.deck.map(i => CARDS[i].name).join(', ')}</span></div>
+    <div class="layout"><div>${main}</div><div class="logbox"><div class="tlabel">log</div><div id="log">${G.log.join('\n')}</div></div></div>`;
+  const l = document.getElementById('log'); l.scrollTop = l.scrollHeight;
+}
+
+function restart(seed) { newRun(seed ?? Math.floor(Math.random() * 1e6)); render(); }
+document.addEventListener('keydown', ev => {
+  if (G.phase === 'match' && /^[1-9]$/.test(ev.key)) { const i = +ev.key - 1; if (i < G.p.hand.length) play(i); }
+});
+restart();
+</script>
+</body>
+</html>
+
