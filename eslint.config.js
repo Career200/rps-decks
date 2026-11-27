@@ -5,7 +5,9 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   // __fixtures__ hold deliberately bad code; tests lint them with `ignore: false`.
-  { ignores: ["dist", "node_modules", "proto", "**/__fixtures__/**"] },
+  {
+    ignores: [".claude", "dist", "node_modules", "proto", "**/__fixtures__/**"],
+  },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [js.configs.recommended, ...tseslint.configs.strict],

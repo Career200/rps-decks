@@ -5,7 +5,8 @@ pre-commit:
   commands:
     format:
       priority: 1
-      glob: "*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml,html,css}"
+      # No glob: --ignore-unknown skips files Prettier can't format, so the hook
+      # covers the same files as CI's `prettier --check .`.
       run: pnpm exec prettier --write --ignore-unknown {staged_files}
       stage_fixed: true
     lint:
@@ -13,5 +14,7 @@ pre-commit:
       glob: "*.{ts,tsx,js,mjs,cjs}"
       run: pnpm exec eslint --no-warn-ignored {staged_files}
     typecheck:
+      # Checks the working tree, not the staged snapshot: a commit that omits a
+      # file it imports can pass here. CI is the gate for that.
       priority: 3
       run: pnpm exec tsc -b
