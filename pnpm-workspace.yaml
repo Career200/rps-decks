@@ -1,0 +1,3 @@
+# lefthook's postinstall is not needed: the `prepare` script runs `lefthook install`.
+allowBuilds:
+  lefthook: false
