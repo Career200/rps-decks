@@ -1,0 +1,17 @@
+# Pre-commit runs fast checks that a deliberately red TDD commit still passes.
+# Tests run in CI only (.github/workflows/ci.yml).
+pre-commit:
+  piped: true # format before linting the same files
+  commands:
+    format:
+      priority: 1
+      glob: "*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml,html,css}"
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    lint:
+      priority: 2
+      glob: "*.{ts,tsx,js,mjs,cjs}"
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+    typecheck:
+      priority: 3
+      run: pnpm exec tsc -b
