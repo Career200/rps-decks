@@ -28,12 +28,17 @@ describe('engine import boundary', () => {
     "import { pick } from '../ai/greedy'",
     "import { run } from '../sim/run'",
     "import { App } from 'src/ui/App'",
+    "import { App } from '/src/ui/App'",
   ])('rejects %s', async (line) => {
     expect(await lintEngineSource(`${line}\n`)).toHaveLength(1)
   })
 
-  it('allows engine-internal imports', async () => {
-    expect(await lintEngineSource("import { seedRng } from './rng'\n")).toHaveLength(0)
+  it.each([
+    "import { seedRng } from './rng'",
+    "import { step } from './sim'",
+    "import { pick } from './board/ai'",
+  ])('allows engine-internal %s', async (line) => {
+    expect(await lintEngineSource(`${line}\n`)).toHaveLength(0)
   })
 
   it('does not restrict code outside src/engine', async () => {

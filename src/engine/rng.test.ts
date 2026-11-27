@@ -63,6 +63,10 @@ describe('int', () => {
     expect(seen.size).toBe(n)
   })
 
+  it.each([0, -1, 1.5, Number.NaN])('rejects n = %s', (n) => {
+    expect(() => int(seedRng(1), n)).toThrow(RangeError)
+  })
+
   it('always returns 0 for n = 1', () => {
     let r = seedRng(3)
     for (let i = 0; i < 100; i++) {

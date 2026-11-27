@@ -29,7 +29,9 @@ export default tseslint.config(
             { regex: '^react($|-dom($|/)|/)', message: 'src/engine must not depend on React.' },
             { regex: '^node:', message: 'src/engine must not depend on Node built-ins.' },
             {
-              regex: '^(src/|(\\.\\.?/)+)(.*/)?(ui|ai|sim)($|/)',
+              // Only paths that climb out (`../`) or are src-rooted count as
+              // leaving the engine; `./sim` inside the engine is fine.
+              regex: '^(/?src/|(\\.\\./)+)(ui|ai|sim)($|/)',
               message: 'src/engine must not import src/ui, src/ai or src/sim.',
             },
           ],
