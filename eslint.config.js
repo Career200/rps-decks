@@ -18,6 +18,26 @@ export default tseslint.config(
     },
   },
   {
+    // The engine is pure: no rendering, no host APIs, no knowledge of the
+    // layers built on top of it.
+    files: ['src/engine/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { regex: '^react($|-dom($|/)|/)', message: 'src/engine must not depend on React.' },
+            { regex: '^node:', message: 'src/engine must not depend on Node built-ins.' },
+            {
+              regex: '^(src/|(\\.\\.?/)+)(.*/)?(ui|ai|sim)($|/)',
+              message: 'src/engine must not import src/ui, src/ai or src/sim.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['src/ui/**/*.{ts,tsx}', 'src/main.tsx'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
